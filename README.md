@@ -9,7 +9,7 @@ ClimaSecure is a digital microinsurance platform designed to protect smallholder
 ## Features
 
 ### USSD-Based Access
-- Simple USSD code: `*318#`
+- Simple USSD code: `*384#`
 - Works on basic "feature phones" without internet
 - Registration, premium payment, and policy status checks via USSD
 
@@ -79,7 +79,7 @@ Edit `.env` file with your credentials:
 # Africa's Talking
 AFRICASTALKING_USERNAME=sandbox
 AFRICASTALKING_API_KEY=your_api_key
-AFRICASTALKING_USSD_SHORTCODE=*318#
+AFRICASTALKING_USSD_SHORTCODE=*384#
 
 # M-Pesa (Daraja API)
 MPESA_CONSUMER_KEY=your_consumer_key

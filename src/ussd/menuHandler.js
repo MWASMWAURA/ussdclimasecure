@@ -1,6 +1,6 @@
 /**
  * ClimaSecure USSD Menu Handler
- * Implements the state-aware menu system for *318#
+ * Implements the state-aware menu system for *384#
  */
 
 const config = require('../config');
@@ -142,7 +142,7 @@ Premium: KES ${config.insurance.premiumAmount}/year
 
 You will receive payouts automatically if heavy rainfall triggers a claim in your county.
 
-Dial *318# to access services.`;
+Dial *384# to access services.`;
 }
 
 /**
@@ -174,7 +174,7 @@ Premium Paid: KES ${policy.premium_paid}
 Valid From: ${policy.start_date}
 Valid Until: ${policy.end_date}
 
-Dial *318# for menu.`;
+Dial *384# for menu.`;
 }
 
 /**
@@ -284,7 +284,7 @@ COVERAGE:
 
 For support, contact:
 Email: support@climasecure.ke
-Dial *318# for menu.`;
+Dial *384# for menu.`;
 }
 
 /**
@@ -435,7 +435,7 @@ async function handleRegisterConfirm(phone, input) {
   if (input === '2') {
     // Cancel
     sessionManager.clearSession(phone);
-    return `END Registration cancelled. Dial *318# to start again.`;
+    return `END Registration cancelled. Dial *384# to start again.`;
   }
   
   if (input !== '1') {

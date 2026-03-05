@@ -14,7 +14,7 @@ module.exports = {
   africaTalking: {
     username: process.env.AFRICASTALKING_USERNAME || 'sandbox',
     apiKey: process.env.AFRICASTALKING_API_KEY || '',
-    ussdShortCode: process.env.AFRICASTALKING_USSD_SHORTCODE || '*318#'
+    ussdShortCode: process.env.AFRICASTALKING_USSD_SHORTCODE || '*384#'
   },
 
   // M-Pesa Configuration
