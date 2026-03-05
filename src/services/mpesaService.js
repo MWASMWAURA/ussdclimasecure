@@ -122,7 +122,18 @@ async function sendStkPush(phoneNumber, amount, callbackUrl = null) {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('STK Push - Not JSON response:', responseText);
+      return {
+        success: false,
+        error: 'Invalid response from M-Pesa',
+        details: responseText
+      };
+    }
     
     if (data.ResponseCode === '0') {
       return {
