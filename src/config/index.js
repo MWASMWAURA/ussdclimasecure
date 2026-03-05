@@ -23,6 +23,7 @@ module.exports = {
     consumerSecret: process.env.MPESA_CONSUMER_SECRET || '',
     shortCode: process.env.MPESA_SHORTCODE || '600000',
     passkey: process.env.MPESA_PASSKEY || '',
+    securityCredential: process.env.MPESA_SECURITY_CREDENTIAL || '',
     env: process.env.MPESA_ENV || 'sandbox',
     callbackUrl: process.env.MPESA_CALLBACK_URL || ''
   },

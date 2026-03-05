@@ -15,6 +15,11 @@ const {
   RainfallThresholdModel,
   RecoveryKitModel 
 } = require('../models');
+const { 
+  sendStkPush, 
+  sendB2CPayment, 
+  getAccessToken 
+} = require('../services/mpesaService');
 const { processRainfallTriggers, getTriggerStatus } = require('../services/triggerService');
 const { sendSms } = require('../ussd/africasTalking');
 
@@ -466,3 +471,65 @@ router.get('/stats', (req, res) => {
 });
 
 module.exports = router;
+
+// ==================== M-PESA TEST ROUTES ====================
+
+/**
+ * Test M-Pesa connection
+ */
+router.get('/mpesa/test-auth', async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    res.json({ success: true, message: 'M-Pesa auth working', tokenPrefix: token.substring(0, 10) + '...' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Test STK Push (simulate payment request)
+ */
+router.post('/mpesa/stk-push-test', async (req, res) => {
+  try {
+    const { phoneNumber, amount } = req.body;
+    
+    if (!phoneNumber || !amount) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: phoneNumber, amount' 
+      });
+    }
+    
+    // Format phone number
+    const formattedPhone = phoneNumber.startsWith('254') ? phoneNumber : '254' + phoneNumber.substring(1);
+    
+    const result = await sendStkPush(formattedPhone, amount);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Test B2C Payment (payout to farmer)
+ */
+router.post('/mpesa/b2c-test', async (req, res) => {
+  try {
+    const { phoneNumber, amount } = req.body;
+    
+    if (!phoneNumber || !amount) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: phoneNumber, amount' 
+      });
+    }
+    
+    // Format phone number
+    const formattedPhone = phoneNumber.startsWith('254') ? phoneNumber : '254' + phoneNumber.substring(1);
+    
+    const result = await sendB2CPayment(formattedPhone, amount, 'ClimaSecure Test Payout');
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
