@@ -13,15 +13,23 @@ const MENU_STATE = {
   ROOT: 'root',
   REGISTER_NATIONAL_ID: 'register_national_id',
   REGISTER_COUNTY: 'register_county',
+  REGISTER_COUNTY_PAGE: 'register_county_page',
   REGISTER_CONFIRM: 'register_confirm',
   CHECK_POLICY: 'check_policy',
   CHECK_POLICY_RESULT: 'check_policy_result',
   RAINFALL_UPDATE: 'rainfall_update',
-  RAINFALL_COUNTY: 'rainfall_county',
+  RAINFALL_COUNTY_PAGE: 'rainfall_county_page',
   PAYOUT_STATUS: 'payout_status',
   PAYOUT_STATUS_RESULT: 'payout_status_result',
   HELP: 'help'
 };
+
+/**
+ * Pagination constants
+ */
+const COUNTIES_PER_PAGE = 10;
+const NEXT_PAGE_CODE = '98';
+const BACK_PAGE_CODE = '0';
 
 /**
  * Session Manager - Manages USSD session state
@@ -102,15 +110,32 @@ function getRegisterNationalIdMenu() {
 }
 
 /**
- * Handle registration - County selection
+ * Handle registration - County selection (paginated)
  */
-function getRegisterCountyMenu(nationalId) {
+function getRegisterCountyMenu(nationalId, page = 1) {
   const counties = config.counties;
-  let menu = `CON Select your county:\n`;
+  const totalPages = Math.ceil(counties.length / COUNTIES_PER_PAGE);
+  const startIndex = (page - 1) * COUNTIES_PER_PAGE;
+  const endIndex = Math.min(startIndex + COUNTIES_PER_PAGE, counties.length);
+  const pageCounties = counties.slice(startIndex, endIndex);
   
-  counties.forEach((county, index) => {
-    menu += `${index + 1}. ${county}\n`;
+  let menu = `CON Select your county (Page ${page}/${totalPages}):\n`;
+  
+  pageCounties.forEach((county, index) => {
+    const globalIndex = startIndex + index + 1;
+    menu += `${globalIndex}. ${county}\n`;
   });
+  
+  // Add navigation options
+  if (totalPages > 1) {
+    menu += `\n`;
+    if (page < totalPages) {
+      menu += `${COUNTIES_PER_PAGE + 1}. Next >\n`;
+    }
+    if (page > 1) {
+      menu += `${COUNTIES_PER_PAGE + 2}. < Previous\n`;
+    }
+  }
   
   return menu;
 }
@@ -178,14 +203,32 @@ Dial *384# for menu.`;
 }
 
 /**
- * Handle rainfall update - county selection
+ * Handle rainfall update - county selection (paginated)
  */
-function getRainfallUpdateMenu() {
-  let menu = `CON Select county for rainfall info:\n`;
+function getRainfallUpdateMenu(page = 1) {
+  const counties = config.counties;
+  const totalPages = Math.ceil(counties.length / COUNTIES_PER_PAGE);
+  const startIndex = (page - 1) * COUNTIES_PER_PAGE;
+  const endIndex = Math.min(startIndex + COUNTIES_PER_PAGE, counties.length);
+  const pageCounties = counties.slice(startIndex, endIndex);
   
-  config.counties.forEach((county, index) => {
-    menu += `${index + 1}. ${county}\n`;
+  let menu = `CON Select county for rainfall info (Page ${page}/${totalPages}):\n`;
+  
+  pageCounties.forEach((county, index) => {
+    const globalIndex = startIndex + index + 1;
+    menu += `${globalIndex}. ${county}\n`;
   });
+  
+  // Add navigation options
+  if (totalPages > 1) {
+    menu += `\n`;
+    if (page < totalPages) {
+      menu += `${COUNTIES_PER_PAGE + 1}. Next >\n`;
+    }
+    if (page > 1) {
+      menu += `${COUNTIES_PER_PAGE + 2}. < Previous\n`;
+    }
+  }
   
   return menu;
 }
@@ -319,6 +362,7 @@ async function processUssdRequest(phoneNumber, text) {
         return handleRegisterNationalId(formattedPhone, currentInput);
         
       case MENU_STATE.REGISTER_COUNTY:
+      case MENU_STATE.REGISTER_COUNTY_PAGE:
         return handleRegisterCounty(formattedPhone, currentInput);
         
       case MENU_STATE.REGISTER_CONFIRM:
@@ -328,10 +372,8 @@ async function processUssdRequest(phoneNumber, text) {
         return handleCheckPolicy(formattedPhone, currentInput);
         
       case MENU_STATE.RAINFALL_UPDATE:
+      case MENU_STATE.RAINFALL_COUNTY_PAGE:
         return handleRainfallUpdate(formattedPhone, currentInput);
-        
-      case MENU_STATE.RAINFALL_COUNTY:
-        return handleRainfallCounty(formattedPhone, currentInput);
         
       case MENU_STATE.PAYOUT_STATUS:
         return handlePayoutStatus(formattedPhone, currentInput);
@@ -368,8 +410,8 @@ function handleRootMenu(phone, input) {
       
     case '3':
       // Rainfall Update
-      sessionManager.updateSession(phone, MENU_STATE.RAINFALL_UPDATE);
-      return getRainfallUpdateMenu();
+      sessionManager.updateSession(phone, MENU_STATE.RAINFALL_UPDATE, { rainfallPage: 1 });
+      return getRainfallUpdateMenu(1);
       
     case '4':
       // Payout Status
@@ -402,25 +444,58 @@ function handleRegisterNationalId(phone, input) {
     return getCheckPolicyResult(existingFarmer, policy);
   }
   
-  sessionManager.updateSession(phone, MENU_STATE.REGISTER_COUNTY, { nationalId: input });
-  return getRegisterCountyMenu(input);
+  sessionManager.updateSession(phone, MENU_STATE.REGISTER_COUNTY, { 
+    nationalId: input,
+    countyPage: 1 
+  });
+  return getRegisterCountyMenu(input, 1);
 }
 
 /**
- * Handle registration - County selection
+ * Handle registration - County selection with pagination
  */
 function handleRegisterCounty(phone, input) {
-  const countyIndex = parseInt(input) - 1;
+  const counties = config.counties;
+  const totalPages = Math.ceil(counties.length / COUNTIES_PER_PAGE);
   const session = sessionManager.getSession(phone);
+  const currentPage = session.data.countyPage || 1;
+  const startIndex = (currentPage - 1) * COUNTIES_PER_PAGE;
+  const endIndex = Math.min(startIndex + COUNTIES_PER_PAGE, counties.length);
   
-  if (isNaN(countyIndex) || countyIndex < 0 || countyIndex >= config.counties.length) {
-    return `CON Invalid selection. Please enter a number between 1 and ${config.counties.length}:`;
+  const inputNum = parseInt(input);
+  
+  // Handle page navigation
+  if (input === NEXT_PAGE_CODE && currentPage < totalPages) {
+    // Next page
+    const newPage = currentPage + 1;
+    sessionManager.updateSession(phone, MENU_STATE.REGISTER_COUNTY_PAGE, { 
+      nationalId: session.data.nationalId,
+      countyPage: newPage 
+    });
+    return getRegisterCountyMenu(session.data.nationalId, newPage);
   }
   
-  const county = config.counties[countyIndex];
+  if (input === BACK_PAGE_CODE && currentPage > 1) {
+    // Previous page
+    const newPage = currentPage - 1;
+    sessionManager.updateSession(phone, MENU_STATE.REGISTER_COUNTY_PAGE, { 
+      nationalId: session.data.nationalId,
+      countyPage: newPage 
+    });
+    return getRegisterCountyMenu(session.data.nationalId, newPage);
+  }
+  
+  // Handle county selection
+  const countyIndex = inputNum - 1;
+  
+  if (isNaN(countyIndex) || countyIndex < 0 || countyIndex >= counties.length) {
+    return `CON Invalid selection. Please enter a number between 1 and ${counties.length}:`;
+  }
+  
+  const county = counties[countyIndex];
   sessionManager.updateSession(phone, MENU_STATE.REGISTER_CONFIRM, { 
     nationalId: session.data.nationalId,
-    county: county 
+    county: county
   });
   
   return getRegisterConfirmMenu(session.data.nationalId, county);
@@ -470,16 +545,45 @@ function handleCheckPolicy(phone, input) {
 }
 
 /**
- * Handle rainfall update - county selection
+ * Handle rainfall update - county selection with pagination
  */
 function handleRainfallUpdate(phone, input) {
-  const countyIndex = parseInt(input) - 1;
+  const counties = config.counties;
+  const totalPages = Math.ceil(counties.length / COUNTIES_PER_PAGE);
+  const session = sessionManager.getSession(phone);
+  const currentPage = session.data.rainfallPage || 1;
+  const startIndex = (currentPage - 1) * COUNTIES_PER_PAGE;
+  const endIndex = Math.min(startIndex + COUNTIES_PER_PAGE, counties.length);
   
-  if (isNaN(countyIndex) || countyIndex < 0 || countyIndex >= config.counties.length) {
-    return `CON Invalid selection. Please enter a number between 1 and ${config.counties.length}:`;
+  const inputNum = parseInt(input);
+  
+  // Handle page navigation
+  if (input === NEXT_PAGE_CODE && currentPage < totalPages) {
+    // Next page
+    const newPage = currentPage + 1;
+    sessionManager.updateSession(phone, MENU_STATE.RAINFALL_COUNTY_PAGE, { 
+      rainfallPage: newPage 
+    });
+    return getRainfallUpdateMenu(newPage);
   }
   
-  const county = config.counties[countyIndex];
+  if (input === BACK_PAGE_CODE && currentPage > 1) {
+    // Previous page
+    const newPage = currentPage - 1;
+    sessionManager.updateSession(phone, MENU_STATE.RAINFALL_COUNTY_PAGE, { 
+      rainfallPage: newPage 
+    });
+    return getRainfallUpdateMenu(newPage);
+  }
+  
+  // Handle county selection
+  const countyIndex = inputNum - 1;
+  
+  if (isNaN(countyIndex) || countyIndex < 0 || countyIndex >= counties.length) {
+    return `CON Invalid selection. Please enter a number between 1 and ${counties.length}:`;
+  }
+  
+  const county = counties[countyIndex];
   sessionManager.clearSession(phone);
   
   return getRainfallUpdateResult(county);

@@ -43,7 +43,8 @@ module.exports = {
 
   // Database
   db: {
-    path: process.env.DB_PATH || './data/climasecure.db'
+    path: process.env.DB_PATH || './data/climasecure.db',
+    mongoUri: process.env.MONGODB_URI || ''
   },
 
   // Kenya Counties supported by ClimaSecure
