@@ -469,6 +469,80 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// ==================== M-PESA CALLBACK ROUTES ====================
+
+/**
+ * M-Pesa STK Push Callback - Handle payment confirmation
+ */
+router.post('/mpesa/stk-callback', async (req, res) => {
+  try {
+    const callbackBody = req.body;
+    console.log('STK Callback received:', JSON.stringify(callbackBody));
+    
+    // M-Pesa sends the callback with Body -> stkCallback
+    const stkCallback = callbackBody.Body?.stkCallback;
+    
+    if (!stkCallback) {
+      return res.status(400).json({ success: false, error: 'Invalid callback format' });
+    }
+    
+    const resultCode = stkCallback.ResultCode;
+    const resultDesc = stkCallback.ResultDesc;
+    const checkoutRequestId = stkCallback.CheckoutRequestID;
+    
+    // Check if payment was successful
+    if (resultCode === 0) {
+      // Payment successful - find the policy by checkout request or phone
+      // For now, we'll look for pending_payment policies
+      const pendingPolicies = await db.findMany('policies', { status: 'pending_payment' });
+      
+      if (pendingPolicies && pendingPolicies.length > 0) {
+        // Get the most recent pending policy
+        const policy = pendingPolicies[pendingPolicies.length - 1];
+        
+        // Get farmer details
+        const farmer = await FarmerModel.findById(policy.farmer_id);
+        
+        // Update policy to active
+        await PolicyModel.updateStatus(policy._id, 'active');
+        
+        // Send confirmation SMS
+        if (farmer) {
+          const smsMessage = `🌾 Welcome to ${config.app.name}!\n\n` +
+            `Your policy is now ACTIVE!\n\n` +
+            `📋 Policy #: ${policy.policy_number}\n` +
+            `👤 Name: ${farmer.national_id}\n` +
+            `📍 County: ${farmer.county}\n` +
+            `💰 Coverage: KES ${policy.coverage_amount.toLocaleString()}\n` +
+            `💵 Premium Paid: KES ${policy.premium_paid}\n` +
+            `📅 Valid until: ${policy.end_date}\n\n` +
+            `You will receive automatic payouts if heavy rainfall triggers a claim in ${farmer.county}.\n\n` +
+            `Dial *318# for services.`;
+          
+          try {
+            const formattedPhone = farmer.phone_number.startsWith('+') ? farmer.phone_number : `+${farmer.phone_number}`;
+            await sendSms(formattedPhone, smsMessage);
+            console.log('Activation SMS sent to:', farmer.phone_number);
+          } catch (smsError) {
+            console.error('Failed to send activation SMS:', smsError);
+          }
+        }
+        
+        console.log(`Policy ${policy.policy_number} activated for farmer ${farmer?.phone_number}`);
+      }
+      
+      return res.json({ success: true, message: 'Payment processed successfully' });
+    } else {
+      // Payment failed
+      console.log('Payment failed:', resultDesc);
+      return res.json({ success: false, message: resultDesc });
+    }
+  } catch (error) {
+    console.error('STK Callback Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== M-PESA TEST ROUTES ====================
 
 /**

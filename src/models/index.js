@@ -79,7 +79,7 @@ const PolicyModel = {
   /**
    * Create a new policy for a farmer
    */
-  async create(farmerId, premiumPaid = 0) {
+  async create(farmerId, premiumPaid = 0, status = 'active') {
     const policyNumber = `CS-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     const startDate = new Date().toISOString().split('T')[0];
     const endDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -91,7 +91,7 @@ const PolicyModel = {
       _id: uuidv4(),
       farmer_id: farmerId,
       policy_number: policyNumber,
-      status: 'active',
+      status: status,
       premium_paid: premiumPaid,
       coverage_amount: coverageAmount,
       start_date: startDate,

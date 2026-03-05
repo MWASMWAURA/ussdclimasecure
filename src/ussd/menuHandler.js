@@ -5,6 +5,8 @@
 
 const config = require('../config');
 const { FarmerModel, PolicyModel, ClaimModel, RainfallDataModel, RainfallThresholdModel } = require('../models');
+const { sendStkPush } = require('../services/mpesaService');
+const { sendSms } = require('./africasTalking');
 
 /**
  * Menu States
@@ -517,15 +519,40 @@ async function handleRegisterConfirm(phone, input) {
     return `CON Invalid option. Enter 1 to confirm or 2 to cancel:`;
   }
   
-  // Create farmer
-  const farmer = await FarmerModel.create(phone, session.data.nationalId, session.data.county);
-  
-  // Create policy
-  const policy = await PolicyModel.create(farmer._id, config.insurance.premiumAmount);
-  
-  sessionManager.clearSession(phone);
-  
-  return getRegistrationSuccessMenu(policy);
+  try {
+    // Create farmer
+    const farmer = await FarmerModel.create(phone, session.data.nationalId, session.data.county);
+    
+    // Create policy with pending_payment status
+    const policy = await PolicyModel.create(farmer._id, config.insurance.premiumAmount, 'pending_payment');
+    
+    // Send STK Push for premium payment
+    const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
+    
+    try {
+      await sendStkPush(formattedPhone, config.insurance.premiumAmount, policy.policy_number);
+      
+      sessionManager.clearSession(phone);
+      
+      return `CON Thank you for registering with ${config.app.name}!
+
+A payment request of KES ${config.insurance.premiumAmount} has been sent to your phone.
+
+Please check your phone and enter your M-Pesa PIN to complete payment.
+
+You will receive an SMS confirmation once payment is processed.`;
+    } catch (stkError) {
+      console.error('STK Push Error:', stkError);
+      sessionManager.clearSession(phone);
+      return `CON Thank you for registering!
+
+There was an issue sending the payment request. Please try again later or call 0722 000 000 for assistance.`;
+    }
+    
+  } catch (error) {
+    console.error('Registration Error:', error);
+    return `CON Error during registration. Please try again later.`;
+  }
 }
 
 /**

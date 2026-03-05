@@ -99,6 +99,9 @@ async function sendStkPush(phoneNumber, amount, callbackUrl = null) {
     const token = await getAccessToken();
     const { password, timestamp } = generatePassword();
     
+    // Use the provided callback URL, or fall back to config, or use default
+    const stkCallbackUrl = callbackUrl || config.mpesa.callbackUrl || `${config.app.url}/api/mpesa/stk-callback`;
+    
     const payload = {
       BusinessShortCode: config.mpesa.shortCode,
       Password: password,
@@ -108,7 +111,7 @@ async function sendStkPush(phoneNumber, amount, callbackUrl = null) {
       PartyA: phoneNumber,
       PartyB: config.mpesa.shortCode,
       PhoneNumber: phoneNumber,
-      CallBackURL: callbackUrl || config.mpesa.callbackUrl || `${config.app.url}/mpesa/callback`,
+      CallBackURL: stkCallbackUrl,
       AccountReference: 'ClimaSecure',
       TransactionDesc: 'ClimaSecure Premium Payment'
     };

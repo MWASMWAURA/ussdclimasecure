@@ -18,6 +18,7 @@ function getAfricaTalkingClient() {
         username: config.africaTalking.username,
         apiKey: config.africaTalking.apiKey
       });
+      console.log('AT Client initialized. Available services:', Object.keys(atClient));
     } catch (error) {
       console.error('Failed to initialize Africa\'s Talking SDK:', error);
     }
@@ -93,7 +94,8 @@ function formatPhoneForAT(phone) {
     cleaned = '254' + cleaned;
   }
   
-  return cleaned;
+  // Return with + prefix for Africa's Talking
+  return '+' + cleaned;
 }
 
 /**
@@ -133,18 +135,17 @@ async function sendSms(phoneNumber, message) {
   }
   
   try {
-    // Check if SMS service is available
-    if (!client.sms) {
-      console.warn('Africa\'s Talking SMS service not available');
-      return { success: false, error: 'SMS service not available' };
-    }
+    // Debug: Check what services are available
+    console.log('Available AT services:', Object.keys(client));
+    console.log('SMS service:', client.SMS);
     
+    // Use the SMS service
     const formattedPhone = formatPhoneForAT(phoneNumber);
     
-    const result = await client.sms.send({
+    const result = await client.SMS.send({
       to: [formattedPhone],
       message: message,
-      from: 'CLIMASEC'
+      from: 'ClimaSecure'
     });
     
     console.log('SMS sent:', result);
