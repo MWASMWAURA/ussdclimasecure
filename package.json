@@ -1,0 +1,33 @@
+{
+  "name": "climasecure",
+  "version": "1.0.0",
+  "description": "USSD-based climate microinsurance platform for smallholder farmers in Kenya",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test src/**/*.test.js",
+    "init-db": "node src/scripts/initDb.js",
+    "trigger-check": "node src/scripts/checkTriggers.js"
+  },
+  "keywords": [
+    "ussd",
+    "insurance",
+    "climate",
+    "kenya",
+    "mpesa",
+    "africas-talking",
+    "parametric"
+  ],
+  "author": "ClimaSecure Team",
+  "license": "MIT",
+  "dependencies": {
+    "africastalking": "^0.6.0",
+    "sql.js": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3",
+    "uuid": "^11.0.5"
+  }
+}
