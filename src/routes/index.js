@@ -39,9 +39,9 @@ router.get('/health', (req, res) => {
 /**
  * Get all farmers
  */
-router.get('/farmers', (req, res) => {
+router.get('/farmers', async (req, res) => {
   try {
-    const farmers = FarmerModel.findAll();
+    const farmers = await FarmerModel.findAll();
     res.json({ success: true, count: farmers.length, farmers });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -51,9 +51,9 @@ router.get('/farmers', (req, res) => {
 /**
  * Get farmer by ID
  */
-router.get('/farmers/:id', (req, res) => {
+router.get('/farmers/:id', async (req, res) => {
   try {
-    const farmer = FarmerModel.findById(req.params.id);
+    const farmer = await FarmerModel.findById(req.params.id);
     if (!farmer) {
       return res.status(404).json({ success: false, error: 'Farmer not found' });
     }
@@ -66,9 +66,9 @@ router.get('/farmers/:id', (req, res) => {
 /**
  * Get farmer by phone
  */
-router.get('/farmers/phone/:phone', (req, res) => {
+router.get('/farmers/phone/:phone', async (req, res) => {
   try {
-    const farmer = FarmerModel.findByPhone(req.params.phone);
+    const farmer = await FarmerModel.findByPhone(req.params.phone);
     if (!farmer) {
       return res.status(404).json({ success: false, error: 'Farmer not found' });
     }
@@ -81,7 +81,7 @@ router.get('/farmers/phone/:phone', (req, res) => {
 /**
  * Register a new farmer (API)
  */
-router.post('/farmers', (req, res) => {
+router.post('/farmers', async (req, res) => {
   try {
     const { phoneNumber, nationalId, county } = req.body;
     
@@ -93,14 +93,14 @@ router.post('/farmers', (req, res) => {
     }
     
     // Check if farmer exists
-    const existing = FarmerModel.findByNationalId(nationalId);
+    const existing = await FarmerModel.findByNationalId(nationalId);
     if (existing) {
       return res.status(400).json({ success: false, error: 'Farmer with this National ID already exists' });
     }
     
     // Create farmer and policy
-    const farmer = FarmerModel.create(phoneNumber, nationalId, county);
-    const policy = PolicyModel.create(farmer.id, config.insurance.premiumAmount);
+    const farmer = await FarmerModel.create(phoneNumber, nationalId, county);
+    const policy = await PolicyModel.create(farmer._id, config.insurance.premiumAmount);
     
     res.status(201).json({ 
       success: true, 
@@ -117,15 +117,15 @@ router.post('/farmers', (req, res) => {
 /**
  * Get all policies
  */
-router.get('/policies', (req, res) => {
+router.get('/policies', async (req, res) => {
   try {
     const { status, county } = req.query;
     let policies;
     
     if (county) {
-      policies = PolicyModel.findActiveByCounty(county);
+      policies = await PolicyModel.findActiveByCounty(county);
     } else {
-      policies = db.all('SELECT * FROM policies ORDER BY created_at DESC');
+      policies = await db.findMany('policies', {});
     }
     
     if (status) {
@@ -141,9 +141,9 @@ router.get('/policies', (req, res) => {
 /**
  * Get policy by ID
  */
-router.get('/policies/:id', (req, res) => {
+router.get('/policies/:id', async (req, res) => {
   try {
-    const policy = PolicyModel.findById(req.params.id);
+    const policy = await PolicyModel.findById(req.params.id);
     if (!policy) {
       return res.status(404).json({ success: false, error: 'Policy not found' });
     }
@@ -156,9 +156,9 @@ router.get('/policies/:id', (req, res) => {
 /**
  * Get policy by farmer ID
  */
-router.get('/policies/farmer/:farmerId', (req, res) => {
+router.get('/policies/farmer/:farmerId', async (req, res) => {
   try {
-    const policy = PolicyModel.findByFarmerId(req.params.farmerId);
+    const policy = await PolicyModel.findByFarmerId(req.params.farmerId);
     if (!policy) {
       return res.status(404).json({ success: false, error: 'Policy not found' });
     }
@@ -173,10 +173,10 @@ router.get('/policies/farmer/:farmerId', (req, res) => {
 /**
  * Get all claims
  */
-router.get('/claims', (req, res) => {
+router.get('/claims', async (req, res) => {
   try {
     const { status, county } = req.query;
-    let claims = ClaimModel.findAll();
+    let claims = await ClaimModel.findAll();
     
     if (status) {
       claims = claims.filter(c => c.status === status);
@@ -195,9 +195,9 @@ router.get('/claims', (req, res) => {
 /**
  * Get claim by ID
  */
-router.get('/claims/:id', (req, res) => {
+router.get('/claims/:id', async (req, res) => {
   try {
-    const claim = ClaimModel.findById(req.params.id);
+    const claim = await ClaimModel.findById(req.params.id);
     if (!claim) {
       return res.status(404).json({ success: false, error: 'Claim not found' });
     }
@@ -210,7 +210,7 @@ router.get('/claims/:id', (req, res) => {
 /**
  * Manual claim creation (admin)
  */
-router.post('/claims', (req, res) => {
+router.post('/claims', async (req, res) => {
   try {
     const { policyId, farmerId, eventType, eventDate, rainfallMm, triggerPercentile } = req.body;
     
@@ -221,7 +221,7 @@ router.post('/claims', (req, res) => {
       });
     }
     
-    const claim = ClaimModel.create(
+    const claim = await ClaimModel.create(
       policyId, 
       farmerId, 
       eventType, 
@@ -239,14 +239,14 @@ router.post('/claims', (req, res) => {
 /**
  * Approve claim (admin)
  */
-router.post('/claims/:id/approve', (req, res) => {
+router.post('/claims/:id/approve', async (req, res) => {
   try {
-    const claim = ClaimModel.findById(req.params.id);
+    const claim = await ClaimModel.findById(req.params.id);
     if (!claim) {
       return res.status(404).json({ success: false, error: 'Claim not found' });
     }
     
-    ClaimModel.updateStatus(claim.id, 'approved');
+    await ClaimModel.updateStatus(claim._id, 'approved');
     res.json({ success: true, message: 'Claim approved' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -256,14 +256,14 @@ router.post('/claims/:id/approve', (req, res) => {
 /**
  * Reject claim (admin)
  */
-router.post('/claims/:id/reject', (req, res) => {
+router.post('/claims/:id/reject', async (req, res) => {
   try {
-    const claim = ClaimModel.findById(req.params.id);
+    const claim = await ClaimModel.findById(req.params.id);
     if (!claim) {
       return res.status(404).json({ success: false, error: 'Claim not found' });
     }
     
-    ClaimModel.updateStatus(claim.id, 'rejected');
+    await ClaimModel.updateStatus(claim._id, 'rejected');
     res.json({ success: true, message: 'Claim rejected' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -275,9 +275,9 @@ router.post('/claims/:id/reject', (req, res) => {
 /**
  * Get rainfall thresholds
  */
-router.get('/thresholds', (req, res) => {
+router.get('/thresholds', async (req, res) => {
   try {
-    const thresholds = RainfallThresholdModel.getAll();
+    const thresholds = await RainfallThresholdModel.getAll();
     res.json({ success: true, thresholds });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -287,9 +287,9 @@ router.get('/thresholds', (req, res) => {
 /**
  * Get threshold for a county
  */
-router.get('/thresholds/:county', (req, res) => {
+router.get('/thresholds/:county', async (req, res) => {
   try {
-    const threshold = RainfallThresholdModel.getByCounty(req.params.county);
+    const threshold = await RainfallThresholdModel.getByCounty(req.params.county);
     if (!threshold) {
       return res.status(404).json({ success: false, error: 'Threshold not found' });
     }
@@ -302,7 +302,7 @@ router.get('/thresholds/:county', (req, res) => {
 /**
  * Update rainfall threshold
  */
-router.put('/thresholds/:county', (req, res) => {
+router.put('/thresholds/:county', async (req, res) => {
   try {
     const { percentile90, percentile95 } = req.body;
     
@@ -313,7 +313,7 @@ router.put('/thresholds/:county', (req, res) => {
       });
     }
     
-    RainfallThresholdModel.update(req.params.county, percentile90, percentile95);
+    await RainfallThresholdModel.update(req.params.county, percentile90, percentile95);
     res.json({ success: true, message: 'Threshold updated' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -323,7 +323,7 @@ router.put('/thresholds/:county', (req, res) => {
 /**
  * Add rainfall data
  */
-router.post('/rainfall', (req, res) => {
+router.post('/rainfall', async (req, res) => {
   try {
     const { county, date, rainfallMm, source } = req.body;
     
@@ -334,7 +334,7 @@ router.post('/rainfall', (req, res) => {
       });
     }
     
-    const data = RainfallDataModel.add(county, date, rainfallMm, source || 'manual');
+    const data = await RainfallDataModel.add(county, date, rainfallMm, source || 'manual');
     res.status(201).json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -344,10 +344,10 @@ router.post('/rainfall', (req, res) => {
 /**
  * Get rainfall data for a county
  */
-router.get('/rainfall/:county', (req, res) => {
+router.get('/rainfall/:county', async (req, res) => {
   try {
     const { days } = req.query;
-    const data = RainfallDataModel.getRecentByCounty(req.params.county, parseInt(days) || 7);
+    const data = await RainfallDataModel.getRecentByCounty(req.params.county, parseInt(days) || 7);
     res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -383,16 +383,15 @@ router.post('/triggers/check', async (req, res) => {
 /**
  * Get all recovery kits
  */
-router.get('/recovery-kits', (req, res) => {
+router.get('/recovery-kits', async (req, res) => {
   try {
     const { status, farmerId } = req.query;
     let kits;
     
     if (farmerId) {
-      kits = RecoveryKitModel.findByFarmerId(farmerId);
+      kits = await RecoveryKitModel.findByFarmerId(farmerId);
     } else {
-      const dbModule = require('../db');
-      kits = dbModule.all('SELECT * FROM recovery_kits ORDER BY created_at DESC');
+      kits = await db.findMany('recovery_kits', {});
     }
     
     if (status) {
@@ -408,9 +407,9 @@ router.get('/recovery-kits', (req, res) => {
 /**
  * Mark kit as distributed
  */
-router.post('/recovery-kits/:id/distribute', (req, res) => {
+router.post('/recovery-kits/:id/distribute', async (req, res) => {
   try {
-    RecoveryKitModel.markDistributed(req.params.id);
+    await RecoveryKitModel.markDistributed(req.params.id);
     res.json({ success: true, message: 'Kit marked as distributed' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -445,32 +444,30 @@ router.post('/notifications/sms', async (req, res) => {
 /**
  * Get dashboard statistics
  */
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    const dbModule = require('../db');
+    const farmers = await FarmerModel.findAll();
+    const policies = await db.findMany('policies', { status: 'active' });
+    const claims = await ClaimModel.findAll();
     
-    const farmerCount = dbModule.get('SELECT COUNT(*) as count FROM farmers');
-    const activePolicies = dbModule.get("SELECT COUNT(*) as count FROM policies WHERE status = 'active'");
-    const pendingClaims = dbModule.get("SELECT COUNT(*) as count FROM claims WHERE status = 'pending'");
-    const paidClaims = dbModule.get("SELECT COUNT(*) as count FROM claims WHERE payout_status = 'paid'");
-    const totalPayouts = dbModule.get("SELECT SUM(amount_approved) as total FROM claims WHERE payout_status = 'paid'");
+    const pendingClaims = claims.filter(c => c.status === 'pending');
+    const paidClaims = claims.filter(c => c.payout_status === 'paid');
+    const totalPayouts = paidClaims.reduce((sum, c) => sum + (c.amount_approved || 0), 0);
     
     res.json({
       success: true,
       stats: {
-        farmers: farmerCount.count,
-        activePolicies: activePolicies.count,
-        pendingClaims: pendingClaims.count,
-        paidClaims: paidClaims.count,
-        totalPayouts: totalPayouts.total || 0
+        farmers: farmers.length,
+        activePolicies: policies.length,
+        pendingClaims: pendingClaims.length,
+        paidClaims: paidClaims.length,
+        totalPayouts: totalPayouts
       }
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-module.exports = router;
 
 // ==================== M-PESA TEST ROUTES ====================
 
@@ -533,3 +530,5 @@ router.post('/mpesa/b2c-test', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+module.exports = router;

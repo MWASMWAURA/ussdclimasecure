@@ -236,9 +236,9 @@ function getRainfallUpdateMenu(page = 1) {
 /**
  * Handle rainfall update - result
  */
-function getRainfallUpdateResult(county) {
-  const threshold = RainfallThresholdModel.getByCounty(county);
-  const recentData = RainfallDataModel.getRecentByCounty(county, 7);
+async function getRainfallUpdateResult(county) {
+  const threshold = await RainfallThresholdModel.getByCounty(county);
+  const recentData = await RainfallDataModel.getRecentByCounty(county, 7);
   
   let message = `END Rainfall Update for ${county}:\n\n`;
   
@@ -431,15 +431,15 @@ function handleRootMenu(phone, input) {
 /**
  * Handle registration - National ID
  */
-function handleRegisterNationalId(phone, input) {
+async function handleRegisterNationalId(phone, input) {
   if (!input || input.length < 5) {
     return `CON Invalid National ID. Please enter a valid ID number (at least 5 digits):`;
   }
   
   // Check if already registered
-  const existingFarmer = FarmerModel.findByNationalId(input);
+  const existingFarmer = await FarmerModel.findByNationalId(input);
   if (existingFarmer) {
-    const policy = PolicyModel.findByFarmerId(existingFarmer.id);
+    const policy = await PolicyModel.findByFarmerId(existingFarmer._id);
     sessionManager.clearSession(phone);
     return getCheckPolicyResult(existingFarmer, policy);
   }
@@ -518,10 +518,10 @@ async function handleRegisterConfirm(phone, input) {
   }
   
   // Create farmer
-  const farmer = FarmerModel.create(phone, session.data.nationalId, session.data.county);
+  const farmer = await FarmerModel.create(phone, session.data.nationalId, session.data.county);
   
   // Create policy
-  const policy = PolicyModel.create(farmer.id, config.insurance.premiumAmount);
+  const policy = await PolicyModel.create(farmer._id, config.insurance.premiumAmount);
   
   sessionManager.clearSession(phone);
   
@@ -531,13 +531,13 @@ async function handleRegisterConfirm(phone, input) {
 /**
  * Handle check policy
  */
-function handleCheckPolicy(phone, input) {
+async function handleCheckPolicy(phone, input) {
   if (!input || input.length < 5) {
     return `CON Invalid National ID. Please enter a valid ID number:`;
   }
   
-  const farmer = FarmerModel.findByNationalId(input);
-  const policy = farmer ? PolicyModel.findByFarmerId(farmer.id) : null;
+  const farmer = await FarmerModel.findByNationalId(input);
+  const policy = farmer ? await PolicyModel.findByFarmerId(farmer._id) : null;
   
   sessionManager.clearSession(phone);
   
