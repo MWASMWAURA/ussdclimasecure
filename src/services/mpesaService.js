@@ -201,7 +201,9 @@ async function sendB2CPayment(phoneNumber, amount, remarks = 'ClimaSecure Payout
 
     const payload = {
       InitiatorName: 'ClimaSecure',
-      SecurityCredential: config.mpesa.securityCredential || '',
+      SecurityCredential: config.mpesa.env === 'production' 
+        ? (config.mpesa.securityCredential || '')
+        : (process.env.MPESA_SECURITY_CREDENTIAL_sandbox || ''),
       CommandID: 'BusinessPayment',
       Amount: Math.round(amount),
       PartyA: config.mpesa.shortCode,

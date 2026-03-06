@@ -131,12 +131,8 @@ function getRegisterCountyMenu(nationalId, page = 1) {
   // Add navigation options
   if (totalPages > 1) {
     menu += `\n`;
-    if (page < totalPages) {
-      menu += `${COUNTIES_PER_PAGE + 1}. Next >\n`;
-    }
-    if (page > 1) {
-      menu += `${COUNTIES_PER_PAGE + 2}. < Previous\n`;
-    }
+    menu += `98. Next >\n`;
+    menu += `00. < Previous\n`;
   }
   
   return menu;
@@ -225,7 +221,10 @@ function getRainfallUpdateMenu(page = 1) {
   if (totalPages > 1) {
     menu += `\n`;
     if (page < totalPages) {
-      menu += `${COUNTIES_PER_PAGE + 1}. Next >\n`;
+      menu += `98. Next >\n`;
+    }
+    if (page > 1) {
+      menu += `00. < Previous\n`;
     }
     if (page > 1) {
       menu += `${COUNTIES_PER_PAGE + 2}. < Previous\n`;
@@ -314,21 +313,14 @@ Your account is in good standing.`;
 function getHelpMenu() {
   return `END ${config.app.name} Help:
 
-1. REGISTER: Create your policy using your National ID and county.
+1. Register - Create policy
+2. Check Policy - View status
+3. Rainfall Update - Check levels
+4. Payout Status - Check claims
 
-2. CHECK POLICY: View your policy details and status.
+Premium: KES ${config.insurance.premiumAmount}/yr
+Payout: KES ${config.insurance.payoutAmount}
 
-3. RAINFALL UPDATE: Check current rainfall levels in your county and trigger thresholds.
-
-4. PAYOUT STATUS: Check if you've received any automatic payouts.
-
-COVERAGE:
-- Automatic payout when rainfall exceeds 90th percentile in your county
-- Payout: KES ${config.insurance.payoutAmount.toLocaleString()}
-- Premium: KES ${config.insurance.premiumAmount}/year
-
-For support, contact:
-Email: support@climasecure.ke
 Dial *384# for menu.`;
 }
 
@@ -526,15 +518,15 @@ async function handleRegisterConfirm(phone, input) {
     // Create policy with pending_payment status
     const policy = await PolicyModel.create(farmer._id, config.insurance.premiumAmount, 'pending_payment');
     
-    // Send STK Push for premium payment
-    const formattedPhone = phone.startsWith('+') ? phone : `+${phone}`;
+    // Format phone number correctly for M-Pesa (254xxxxxxxxx without +)
+    const formattedPhone = phone.startsWith('254') ? phone : '254' + phone.substring(1);
     
     try {
       await sendStkPush(formattedPhone, config.insurance.premiumAmount, policy.policy_number);
       
       sessionManager.clearSession(phone);
       
-      return `CON Thank you for registering with ${config.app.name}!
+      return `END Thank you for registering with ${config.app.name}!
 
 A payment request of KES ${config.insurance.premiumAmount} has been sent to your phone.
 
@@ -544,7 +536,7 @@ You will receive an SMS confirmation once payment is processed.`;
     } catch (stkError) {
       console.error('STK Push Error:', stkError);
       sessionManager.clearSession(phone);
-      return `CON Thank you for registering!
+      return `END Thank you for registering!
 
 There was an issue sending the payment request. Please try again later or call 0722 000 000 for assistance.`;
     }
